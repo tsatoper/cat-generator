@@ -1,2 +1,2 @@
-# ddpm-project
-autoregressive ddpm project
+generative project
+
