@@ -1,0 +1,12 @@
+{
+  "batch_size": 32,
+  "epochs": 2000,
+  "lr": 1e-06,
+  "latent_dim": 256,
+  "data_path": "/hb/home/tsatoper/cat-generator/data",
+  "save_dir": "/hb/home/tsatoper/cat-generator/results",
+  "job_id": null,
+  "resume": "/hb/home/tsatoper/cat-generator/results/job_251836/models/latest.pth",
+  "timestamp": "2025-06-25T18:44:06.562454",
+  "device": "cuda"
+}
