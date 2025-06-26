@@ -1,17 +1,19 @@
 # conf/config.yaml
 
 
-batch_size: 32
-epochs: 100
+batch_size: 64
+epochs: 1
 lr: 1e-4
 latent_dim: 512
 beta: 4.0
 
 data_path: /hb/home/tsatoper/cat-generator/data
 save_dir: /hb/home/tsatoper/cat-generator/results
-resume: null #/hb/home/tsatoper/cat-generator/results/job_252116/models/latest.pth
+resume: /hb/home/tsatoper/cat-generator/results/models/epoch_30.pth
 job_id: null
 
 hydra:
   run:
     dir: .
+  job:
+    chdir: false

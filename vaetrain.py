@@ -129,7 +129,7 @@ class MultiLayerPerceptualLoss(nn.Module):
         return loss
 
 def vae_loss(recon_x, x, mu, logvar, beta, perceptual_loss_fn):
-    recon_loss = perceptual_loss_fn(recon_x, x)
+    recon_loss = F.mse_loss(recon_x, x, reduction='sum')
     kl = -0.5 * torch.mean(torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1))
     return recon_loss + beta * kl
 
@@ -161,7 +161,8 @@ def main(cfg: DictConfig):
 
     # Create directories
     os.makedirs(cfg.save_dir , exist_ok=True)
-    models_path = os.path.join(cfg.save_dir, "models")
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M')
+    models_path = os.path.join(cfg.save_dir, timestamp, "models")
     os.makedirs(models_path, exist_ok=True)
 
     # Train
@@ -183,7 +184,7 @@ def main(cfg: DictConfig):
             torch.save({
                 "epoch": epoch,
                 "model_state_dict": model.state_dict(),
-            }, os.path.join(cfg.save_dir, "models", f"epoch_{epoch}.pth"))
+            },   os.path.join(cfg.save_dir, timestamp, f"epoch_{epoch}.pth"))
 
     # Save Latest
     latest_path = os.path.join(cfg.save_dir, "models", "latest")
