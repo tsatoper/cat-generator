@@ -1,0 +1,22 @@
+rm: cannot remove '/hb/home/tsatoper/cat-generator/results/22': No such file or directory
+/hb/home/tsatoper/.conda/envs/mypython/lib/python3.10/site-packages/torch/utils/data/dataloader.py:626: UserWarning: This DataLoader will create 4 worker processes in total. Our suggested max number of worker in current system is 1, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
+  warnings.warn(
+Saved config to
+/hb/home/tsatoper/cat-generator/results/22/config.json
+JOB_ID=22
+python vaetrain.py \
+    --batch_size 64 \
+    --epochs 0 \
+    --lr 1e-04 \
+    --latent_dim 512 \
+    --beta 4.0 \
+    --data_path /hb/home/tsatoper/cat-generator/data \
+    --save_dir /hb/home/tsatoper/cat-generator/results/${JOB_ID} \
+    --resume /hb/home/tsatoper/cat-generator/results/2/models/epoch_1770.pth \
+    --job_id ${JOB_ID}
+Using device: cpu
+Resuming from checkpoint: /hb/home/tsatoper/cat-generator/results/2/models/epoch_1770.pth
+Saved latest model in:
+/hb/home/tsatoper/cat-generator/results/22/latest.pth
+Saved sample images to
+/hb/home/tsatoper/cat-generator/results/22/samples.png

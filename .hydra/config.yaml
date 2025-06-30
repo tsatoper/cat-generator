@@ -1,9 +1,9 @@
 batch_size: 64
 epochs: 100
-lr: 0.0001
+lr: 1
 latent_dim: 512
 beta: 4.0
 data_path: /hb/home/tsatoper/cat-generator/data
 save_dir: /hb/home/tsatoper/cat-generator/results
 resume: null
-job_id: null
+job_id: 2

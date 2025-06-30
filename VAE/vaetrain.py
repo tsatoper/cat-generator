@@ -12,20 +12,64 @@ from PIL import Image
 import os
 import json
 from datetime import datetime
+import argparse
 
-import hydra
-from omegaconf import DictConfig
 
+def parse_and_save_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--latent_dim', type=int, default=512)
+    parser.add_argument('--beta', type=float, default=4.0)
+    parser.add_argument('--data_path', type=str, required=True)
+    parser.add_argument('--save_dir', type=str, default='./results')
+    parser.add_argument('--resume', type=str, default=None)
+    parser.add_argument('--job_id', type=str, default=datetime.now().strftime('%Y%m%d_%H%M'))
+    
+    args = parser.parse_args()
+
+    # Save config
+    config_dir = os.path.join(args.save_dir)
+    os.makedirs(config_dir, exist_ok=True)
+    config_path = os.path.join(config_dir, "config.json")
+
+    with open(config_path, "w") as f:
+        json.dump(vars(args), f, indent=4)
+    print("Saved config to")
+    print(config_path)
+    config = vars(args)
+    print(
+        f"JOB_ID={config['job_id']}\n"
+        f"python vaetrain.py \\\n"
+        f"    --batch_size {config['batch_size']} \\\n"
+        f"    --epochs {config['epochs']} \\\n"
+        f"    --lr {config['lr']:.0e} \\\n"
+        f"    --latent_dim {config['latent_dim']} \\\n"
+        f"    --beta {config['beta']} \\\n"
+        f"    --data_path {config['data_path']} \\\n"
+        f"    --save_dir /hb/home/tsatoper/cat-generator/results/${{JOB_ID}} \\\n"
+        f"    --resume {config['resume']} \\\n"
+        f"    --job_id ${{JOB_ID}}"
+    )
+    
+    if args.resume == "null":
+        args.resume = None
+
+    return args
 
 def load_cluster_checkpoint(checkpoint_path, model, optimizer=None):
     """Load checkpoint for resuming training"""
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(
+        checkpoint_path, 
+        map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    )
     model.load_state_dict(checkpoint['model_state_dict'])
     
     if optimizer and 'optimizer_state_dict' in checkpoint:
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     
-    return checkpoint['epoch'], checkpoint['loss']
+    return
 
 class CatDataset(Dataset):
     def __init__(self, image_dir, transform=None):
@@ -133,15 +177,18 @@ def vae_loss(recon_x, x, mu, logvar, beta, perceptual_loss_fn):
     kl = -0.5 * torch.mean(torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1))
     return recon_loss + beta * kl
 
-@hydra.main(config_path=".", config_name="config", version_base=None)
-def main(cfg: DictConfig):
+def main():
+    args = parse_and_save_args()
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # Initialize Model
-    model = VAE(latent_dim=cfg.latent_dim).to(device)
+    model = VAE(latent_dim=args.latent_dim).to(device)
     perceptual_loss_fn = MultiLayerPerceptualLoss().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=cfg.lr)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.5)
+
 
     # Load Data
     transform = transforms.Compose([
@@ -151,59 +198,63 @@ def main(cfg: DictConfig):
         # transforms.ColorJitter(0.2, 0.2, 0.2),
         transforms.ToTensor()
     ])
-    dataset = CatDataset(cfg.data_path, transform)
-    dataloader = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True, num_workers=4)
+    dataset = CatDataset(args.data_path, transform)
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
     # Resume
-    if cfg.resume:
-        print(f"Resuming from checkpoint: {cfg.resume}")
-        start_epoch, prev_loss = load_cluster_checkpoint(cfg.resume, model, optimizer)
+    if args.resume:
+        print(f"Resuming from checkpoint: {args.resume}")
+        load_cluster_checkpoint(args.resume, model, optimizer)
 
     # Create directories
-    os.makedirs(cfg.save_dir , exist_ok=True)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M')
-    models_path = os.path.join(cfg.save_dir, timestamp, "models")
+    os.makedirs(args.save_dir , exist_ok=True)
+    models_path = os.path.join(args.save_dir, "models")
     os.makedirs(models_path, exist_ok=True)
 
     # Train
-    for epoch in range(1, cfg.epochs + 1):
+    for epoch in range(1, args.epochs + 1):
         model.train()
         total_loss = 0
         for data in dataloader:
             data = data.to(device)
             optimizer.zero_grad()
             recon, mu, logvar = model(data)
-            loss = vae_loss(recon, data, mu, logvar, cfg.beta, perceptual_loss_fn)
+            loss = vae_loss(recon, data, mu, logvar, args.beta, perceptual_loss_fn)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
+        scheduler.step()
 
         print(f"Epoch {epoch}, Loss: {total_loss / len(dataloader.dataset):.4f}")
 
         if epoch%10 == 0 or epoch == 1:
+            print(f"Epoch {epoch}, LR: {scheduler.get_last_lr()[0]}")
             torch.save({
                 "epoch": epoch,
                 "model_state_dict": model.state_dict(),
-            },   os.path.join(cfg.save_dir, timestamp, f"epoch_{epoch}.pth"))
+            },   os.path.join(args.save_dir, "models", f"epoch_{epoch}.pth"))
 
     # Save Latest
-    latest_path = os.path.join(cfg.save_dir, "models", "latest")
+    latest_path = os.path.join(args.save_dir, "latest.pth")
     torch.save({
-                "epoch": epoch,
+                "epoch": args.epochs,
                 "model_state_dict": model.state_dict(),
             }, latest_path)
-    print(f'Saved latest model in: {latest_path}')
+    print('Saved latest model in:')
+    print(latest_path)
+
 
     # Generate and Save sample
     model.eval()
     with torch.no_grad():
-        z = torch.randn(num_samples, latent_dim).to(device)
+        z = torch.randn(16, args.latent_dim).to(device) 
         samples = model.decode(z)
-    grid = make_grid(samples, nrow=nrow, normalize=True, padding=2)
-    sample_path = os.path.join(cfg.save_dir, "samples")
+    grid = make_grid(samples, nrow=4, normalize=True, padding=2)
+    sample_path = os.path.join(args.save_dir, "samples.png")
+    os.makedirs(os.path.dirname(sample_path), exist_ok=True)
     save_image(grid, sample_path)
-    print(f"Saved sample images to {sample_path}")
-
+    print("Saved sample images to")
+    print(sample_path)
 
 if __name__ == "__main__":
     main()
