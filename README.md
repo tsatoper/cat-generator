@@ -18,6 +18,10 @@ What's next:
 3. Switch from a VAE model to a DDPM model and try to recreate the results using a diffusion model
 
 Results: ~/cat-generator/VAE/results/(JOB_ID)/
+
     config.json contains hyperparameters
+
     models/ directory contains saved model weights
+
     samples.png contains 16 generated images using the most recent model from that configuration
+
