@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=vae_cats
-#SBATCH --output=vae_12.log
-#SBATCH --error=vae_12.log
+#SBATCH --output=vae_15.log
+#SBATCH --error=vae_15.log
 #SBATCH --time=10:00:00
 #SBATCH --partition=96x24gpu4
 #SBATCH --gres=gpu:1
@@ -12,14 +12,14 @@ module load cuda/12.6
 eval "$(conda shell.bash hook)"
 conda activate mypython
 
-JOB_ID=12
+JOB_ID=15
 rm -r /hb/home/tsatoper/cat-generator/VAE/results/archive/${JOB_ID}
 mv /hb/home/tsatoper/cat-generator/VAE/results/${JOB_ID} /hb/home/tsatoper/cat-generator/VAE/results/archive/
 python vaetrain.py \
-    --batch_size 16 \
-    --epochs 3000 \
+    --batch_size 8 \
+    --epochs 2000 \
     --lr 1e-3 \
-    --latent_dim 512 \
+    --latent_dim 1024 \
     --beta 4.0\
     --data_path /hb/home/tsatoper/cat-generator/data \
     --save_dir /hb/home/tsatoper/cat-generator/VAE/results/${JOB_ID} \

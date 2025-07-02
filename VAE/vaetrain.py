@@ -111,19 +111,19 @@ class VAE(nn.Module):
     def __init__(self, latent_dim=128):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, 4, 2, 1), nn.BatchNorm2d(32), nn.ReLU(), ResidualBlock(32),
-            nn.Conv2d(32, 64, 4, 2, 1), nn.BatchNorm2d(64), nn.ReLU(), ResidualBlock(64),
-            nn.Conv2d(64, 128, 4, 2, 1), nn.BatchNorm2d(128), nn.ReLU(), ResidualBlock(128),
-            nn.Conv2d(128, 256, 4, 2, 1), nn.BatchNorm2d(256), nn.ReLU(), ResidualBlock(256)
+            nn.Conv2d(3, 32, 4, 2, 1), nn.ReLU(), ResidualBlock(32), # nn.BatchNorm2d(32),  in between conv2d and relu
+            nn.Conv2d(32, 64, 4, 2, 1), nn.ReLU(), ResidualBlock(64), #nn.BatchNorm2d(64), 
+            nn.Conv2d(64, 128, 4, 2, 1), nn.ReLU(), ResidualBlock(128), #nn.BatchNorm2d(128), 
+            nn.Conv2d(128, 256, 4, 2, 1), nn.ReLU(), ResidualBlock(256) #nn.BatchNorm2d(256), 
         )
         self.fc_mu = nn.Linear(256 * 4 * 4, latent_dim)
         self.fc_logvar = nn.Linear(256 * 4 * 4, latent_dim)
         self.fc_decode = nn.Linear(latent_dim, 256 * 4 * 4)
         self.decoder = nn.Sequential(
             ResidualBlock(256),
-            nn.ConvTranspose2d(256, 128, 4, 2, 1), nn.BatchNorm2d(128), nn.ReLU(), ResidualBlock(128),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1), nn.BatchNorm2d(64), nn.ReLU(), ResidualBlock(64),
-            nn.ConvTranspose2d(64, 32, 4, 2, 1), nn.BatchNorm2d(32), nn.ReLU(), ResidualBlock(32),
+            nn.ConvTranspose2d(256, 128, 4, 2, 1), nn.ReLU(), ResidualBlock(128), #nn.BatchNorm2d(128),
+            nn.ConvTranspose2d(128, 64, 4, 2, 1), nn.ReLU(), ResidualBlock(64), #nn.BatchNorm2d(64),
+            nn.ConvTranspose2d(64, 32, 4, 2, 1), nn.ReLU(), ResidualBlock(32), #nn.BatchNorm2d(32),
             nn.ConvTranspose2d(32, 3, 4, 2, 1), nn.Sigmoid()
         )
 
@@ -225,10 +225,9 @@ def main():
             total_loss += loss.item()
         scheduler.step()
 
-        print(f"Epoch {epoch}, Loss: {total_loss / len(dataloader.dataset):.4f}")
 
         if epoch%10 == 0 or epoch == 1:
-            print(f"Epoch {epoch}, LR: {scheduler.get_last_lr()[0]}")
+            print(f"Epoch {epoch}, Loss: {total_loss / len(dataloader.dataset):.4f},  LR: {scheduler.get_last_lr()[0]}")
             torch.save({
                 "epoch": epoch,
                 "model_state_dict": model.state_dict(),

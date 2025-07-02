@@ -1,6 +1,6 @@
 {
-    "batch_size": 64,
-    "epochs": 100,
+    "batch_size": 16,
+    "epochs": 2000,
     "lr": 0.001,
     "latent_dim": 512,
     "beta": 0.5,
